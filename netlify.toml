@@ -1,0 +1,10 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Šis ir mūsu "drošais tunelis" uz Notion
+[[redirects]]
+  from = "/api/notion/*"
+  to = "https://api.notion.com/v1/:splat"
+  status = 200
+  force = true
