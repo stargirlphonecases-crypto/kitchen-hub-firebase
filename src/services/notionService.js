@@ -3,8 +3,7 @@
 // Šīs konstantes varētu vēlāk pārvietot uz atsevišķu config failu
 const CACHE_DURATION_MS = 15 * 60 * 1000; 
 const INGREDIENTS_DB_ID = "2d8c827236ec806d9b6dee100778aa65";
-const MEAL_PLANS_DB_ID = "2d8c827236ec8015b2add085f2655a8e";
-
+const MEAL_PLANS_DB_ID = "2d8c827236ec807b907000077c2da2"; // Izlabots ID
 const NotionService = {
   async proxyRequest(endpoint, method = 'POST', body = null) {
     try {
