@@ -19,12 +19,12 @@ import {
 
 // --- FIREBASE CONFIGURATION ---
 const firebaseConfig = {
-  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
-  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.REACT_APP_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.REACT_APP_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.REACT_APP_FIREBASE_APP_ID
+  apiKey: "AIzaSyBBiSn47hrseyNZHpvAMpk4LUJ7a0xMgYg",
+  authDomain: "smart-kitchen-hub-26f94.firebaseapp.com",
+  projectId: "smart-kitchen-hub-26f94",
+  storageBucket: "smart-kitchen-hub-26f94.firebasestorage.app",
+  messagingSenderId: "881105921492",
+  appId: "1:881105921492:web:92537fd42f1c4f16666241"
 };
 
 // Initialize Firebase
