@@ -7,30 +7,17 @@ import {
   Refrigerator, Search, Flame, CalendarX, MessageSquare, Users, MessageCircle, AlertTriangle
 } from 'lucide-react';
 
-console.log("Firebase API Key:", process.env.REACT_APP_FIREBASE_API_KEY);
-// --- FIREBASE IMPORTS ---
-import { initializeApp } from "firebase/app";
+console.log("Firebase API Key:", import.meta.env.VITE_FIREBASE_API_KEY);
+// --- FIREBASE ---
+import { db, auth } from './services/firebase';
 import { 
-  getFirestore, collection, onSnapshot, doc, updateDoc, setDoc, addDoc, query, getDoc, deleteDoc, writeBatch
+  collection, onSnapshot, doc, updateDoc, setDoc, addDoc, getDoc, deleteDoc 
 } from "firebase/firestore";
 import { 
-  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged
+  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged 
 } from "firebase/auth";
 
-// --- FIREBASE CONFIGURATION ---
-const firebaseConfig = {
-  apiKey: "AIzaSyBBiSn47hrseyNZHpvAMpk4LUJ7a0xMgYg",
-  authDomain: "smart-kitchen-hub-26f94.firebaseapp.com",
-  projectId: "smart-kitchen-hub-26f94",
-  storageBucket: "smart-kitchen-hub-26f94.firebasestorage.app",
-  messagingSenderId: "881105921492",
-  appId: "1:881105921492:web:92537fd42f1c4f16666241"
-};
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
 
 // --- NOTION CONFIGURATION ---
 console.log("Firebase API Key:", import.meta.env.VITE_FIREBASE_API_KEY);
@@ -39,8 +26,8 @@ const CONFIG = {
   apiKey: import.meta.env.VITE_NOTION_API_KEY,
   ingredientsDbId: import.meta.env.VITE_NOTION_INGREDIENTS_DB_ID,
   mealPlansDbId: import.meta.env.VITE_NOTION_MEALPLANS_DB_ID,
-  // Fallback to absolute URL proxy for Sandbox, but relative for Netlify
-  baseUrl: typeof window !== 'undefined' && (window.location.hostname.includes('googleusercontent') || window.location.hostname.includes('csb.app')) 
+  // Ja mēs esam lokāli (localhost) vai Sandbox, izmantojam CORS proxy. Ja Netlify, tad /api/notion
+  baseUrl: typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname.includes('googleusercontent') || window.location.hostname.includes('csb.app')) 
            ? "https://corsproxy.io/?https://api.notion.com/v1" 
            : "/api/notion" 
 };
