@@ -417,8 +417,18 @@ export default function App() {
             .filter(ri => (ri.Item || "").trim().toLowerCase() === normName)
             .reduce((sum, ri) => sum + ri.BaseAmount, 0) * portions;
 
+       // Sākotnēji pieņemam, ka nopirkām tik, cik prasa receptes
         let newStock = totalRecipeNeed > 0 ? totalRecipeNeed : 0;
-        if (!isVirtual && (item.inStock || 0) > newStock) newStock = item.inStock;
+
+        if (!isVirtual) {
+            if (item.inStock < 0) {
+                // JAUNUMS: Ja bija mīnuss (manuāli pievienots grozam), pārvēršam to par reāli nopirktu produktu ledusskapī!
+                newStock += Math.abs(item.inStock);
+            } else if ((item.inStock || 0) > newStock) {
+                // Ja ledusskapī jau bija vairāk nekā prasa recepte, saglabājam esošo daudzumu
+                newStock = item.inStock;
+            }
+        }
 
         if (isVirtual) {
             const invCol = collection(db, "households", householdId, "inventory");
