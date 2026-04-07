@@ -506,7 +506,16 @@ export default function App() {
         await updateDoc(itemRef, { inStock: newStock });
     }
   };
+  // --- JAUNUMS: Funkcija precīza daudzuma ievadei ---
+const setExactStock = async (id, exactAmount) => {
+  if (!householdId) return;
   
+  // Pārliecināmies, ka ievadīts ir derīgs skaitlis (ja izdzēš tukšu, ieliekam 0)
+  const validAmount = isNaN(exactAmount) || exactAmount === "" ? 0 : Number(exactAmount);
+  
+  const itemRef = doc(db, "households", householdId, "inventory", id);
+  await updateDoc(itemRef, { inStock: validAmount });
+};
   const handleClearCart = async () => { setCheckedItems({}); };
   const saveDefaultPortions = () => { localStorage.setItem('defaultPortions', portions.toString()); alert("Saved!"); };
 
@@ -762,6 +771,7 @@ export default function App() {
             setIsAddModalOpen={setIsAddModalOpen}
             fridgeItems={fridgeItems}
             updateStock={updateStock}
+            setExactStock={setExactStock}
           />
         ) : (
          <CartView

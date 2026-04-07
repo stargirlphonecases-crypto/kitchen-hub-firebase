@@ -1,11 +1,33 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, Minus, Package, Refrigerator } from 'lucide-react';
 
 export default function FridgeView({
   setIsAddModalOpen,
   fridgeItems,
-  updateStock
+  updateStock,
+  setExactStock
 }) {
+    // JAUNUMS: "Buferis" ievadītajiem cipariem, kamēr lietotājs raksta
+  const [editValues, setEditValues] = useState({});
+
+  const handleInputChange = (id, value) => {
+    setEditValues(prev => ({ ...prev, [id]: value }));
+  };
+
+  const handleInputBlur = (id) => {
+    if (editValues[id] !== undefined) {
+      const val = editValues[id];
+      const finalNum = val === "" || isNaN(val) ? 0 : Number(val);
+      setExactStock(id, finalNum);
+      
+      // Iztīrām buferi šim produktam, jo dati tagad ir nosūtīti uz datubāzi
+      setEditValues(prev => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+    }
+  };
   return (
     <div className="space-y-8 animate-in fade-in">
        <div className="flex justify-between items-end px-2">
@@ -30,7 +52,16 @@ export default function FridgeView({
                  <div className="flex items-center gap-3">
                     <button onClick={() => updateStock(i.id, -1)} className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center active:scale-90 hover:bg-slate-100"><Minus size={14}/></button>
                     <div className="text-center min-w-[40px]">
-                       <span className="text-lg font-black italic">{i.inStock}</span>
+                      <input 
+                       type="number" 
+                       min="0"
+                       step="0.1"
+                       value={editValues[i.id] !== undefined ? editValues[i.id] : i.inStock} 
+                       onChange={(e) => handleInputChange(i.id, e.target.value)}
+                       onBlur={() => handleInputBlur(i.id)}
+                       onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
+                       className="w-16 text-center text-lg font-black italic bg-transparent border-b border-transparent focus:border-slate-300 focus:outline-none transition-colors"
+                    />
                        <span className="text-[9px] block uppercase font-bold text-slate-300">{i.Unit}</span>
                     </div>
                     <button onClick={() => updateStock(i.id, 1)} className="w-8 h-8 bg-slate-50 rounded-full flex items-center justify-center active:scale-90 hover:bg-slate-100"><Plus size={14}/></button>
