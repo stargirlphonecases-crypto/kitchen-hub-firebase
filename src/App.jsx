@@ -206,8 +206,15 @@ export default function App() {
   const [allMeals, setAllMeals] = useState([]); 
   
   const [availableMenus, setAvailableMenus] = useState([]); 
-  const [selectedMenu, setSelectedMenu] = useState(null); 
+  // 1. Mēģinām atcerēties iepriekš izvēlēto ēdienkarti no pārlūka atmiņas
+  const [selectedMenu, setSelectedMenu] = useState(() => localStorage.getItem('savedMenu') || null); 
   
+  // 2. Katru reizi, kad lietotājs izvēlas jaunu ēdienkarti, saglabājam to atmiņā
+  useEffect(() => {
+    if (selectedMenu) {
+      localStorage.setItem('savedMenu', selectedMenu);
+    }
+  }, [selectedMenu]);
   const [portions, setPortions] = useState(() => parseInt(localStorage.getItem('defaultPortions') || "1")); 
   const [currentTheme, setCurrentTheme] = useState(() => localStorage.getItem('appTheme') || 'classic');
 
@@ -464,6 +471,9 @@ export default function App() {
           const snapshot = await import("firebase/firestore").then(m => m.getDocs(completedRef));
           const deletePromises = snapshot.docs.map(d => deleteDoc(d.ref));
           await Promise.all(deletePromises);
+          // --- JAUNUMS: Notīrām arī izvēlēto ēdienkarti ---
+          setSelectedMenu(null);
+          localStorage.removeItem('savedMenu');
           alert("New week started! 🗓️");
           setIsSettingsOpen(false);
       } catch (e) { setErrorMsg("Error resetting week."); } finally { setLoading(false); }
@@ -501,7 +511,13 @@ export default function App() {
   const saveDefaultPortions = () => { localStorage.setItem('defaultPortions', portions.toString()); alert("Saved!"); };
 
   const currentDayPlan = useMemo(() => {
-    return allMeals.filter(m => m.day === DAYS[selectedDayIndex] && (selectedMenu ? m.menuName === selectedMenu : true)).sort((a,b) => (a.order || 99) - (b.order || 99));
+    // Ja ēdienkarte nav izvēlēta, atgriežam tukšumu (nerādām nevienu ēdienu)
+    if (!selectedMenu) return[];
+    
+    // Ja ir izvēlēta, rādām TIKAI tās ēdienkartes ēdienus
+    return allMeals
+      .filter(m => m.day === DAYS[selectedDayIndex] && m.menuName === selectedMenu)
+      .sort((a,b) => (a.order || 99) - (b.order || 99));
   }, [allMeals, selectedDayIndex, selectedMenu]);
 
   const selectedRecipeIngredients = useMemo(() => {
