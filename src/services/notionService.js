@@ -1,36 +1,48 @@
-// src/services/notionService.js
+// --- NOTION CONFIGURATION ---
+const CONFIG = {
+  apiKey: import.meta.env.VITE_NOTION_API_KEY,
+  ingredientsDbId: import.meta.env.VITE_NOTION_INGREDIENTS_DB_ID,
+  mealPlansDbId: import.meta.env.VITE_NOTION_MEALPLANS_DB_ID,
+  baseUrl: typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname.includes('googleusercontent') || window.location.hostname.includes('csb.app')) 
+           ? "https://corsproxy.io/?https://api.notion.com/v1" 
+           : "/api/notion" 
+};
 
-// Šīs konstantes varētu vēlāk pārvietot uz atsevišķu config failu
 const CACHE_DURATION_MS = 15 * 60 * 1000; 
-const INGREDIENTS_DB_ID = "2d8c827236ec806d9b6dee100778aa65";
-const MEAL_PLANS_DB_ID = "2d8c827236ec807b907000077c2da2"; // Izlabots ID
+
 const NotionService = {
-  async proxyRequest(endpoint, method = 'POST', body = null) {
+  async request(endpoint, method = 'POST', body = null) {
+    const origin = typeof window !== 'undefined' && window.location.origin !== 'null' ? window.location.origin : 'http://localhost';
+    const baseUrl = CONFIG.baseUrl.startsWith('http') ? CONFIG.baseUrl : `${origin}${CONFIG.baseUrl}`;
+    const url = `${baseUrl}${endpoint}`;
+    
     try {
-      // Izsaucam mūsu Netlify funkciju, nevis tieši Notion API
-      const response = await fetch('/.netlify/functions/notion-proxy', {
-        method: 'POST', // Visi pieprasījumi uz proxy funkciju ir POST
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ endpoint, method, body }) // Iepakojam Notion pieprasījuma datus
+      const response = await fetch(url, {
+        method,
+        headers: { 
+          'Authorization': `Bearer ${CONFIG.apiKey}`, 
+          'Notion-Version': '2022-06-28', 
+          'Content-Type': 'application/json' 
+        },
+        body: body ? JSON.stringify(body) : null
       });
-      
       const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.message || `Proxy Status: ${response.status}`);
+      if (!response.ok) throw new Error(data.message || `API Status: ${response.status}`);
       return data;
     } catch (error) {
-      console.error(`Notion Proxy Error [${method}]:`, error);
+      console.error(`Notion API Error [${method}]:`, error);
       throw error;
     }
   },
 
   async requestAll(dbId) {
-    let allResults = [];
+    let allResults =[];
     let hasMore = true;
     let cursor = undefined;
     while (hasMore) {
         const body = cursor ? { start_cursor: cursor } : {};
-        const response = await this.proxyRequest(`/databases/${dbId}/query`, 'POST', body);
-        if (response.results) allResults = [...allResults, ...response.results];
+        const response = await this.request(`/databases/${dbId}/query`, 'POST', body);
+        if (response.results) allResults =[...allResults, ...response.results];
         hasMore = response.has_more;
         cursor = response.next_cursor;
     }
@@ -60,7 +72,7 @@ const NotionService = {
     }
 
     try {
-      const data = await this.requestAll(INGREDIENTS_DB_ID);
+      const data = await this.requestAll(CONFIG.ingredientsDbId);
       const parsedData = data.results.map(page => {
         const p = page.properties;
         const titleProp = Object.values(p).find(prop => prop.type === 'title');
@@ -80,7 +92,7 @@ const NotionService = {
           BaseAmount: this.getSafeNumber(p["Amount"]), 
           Unit: p.Unit?.select?.name || null, 
           Department: extractedDept,
-          forMeals: p["Meal Plans"]?.relation?.map(r => r.id) || [] 
+          forMeals: p["Meal Plans"]?.relation?.map(r => r.id) ||[] 
         };
       });
       
@@ -103,7 +115,7 @@ const NotionService = {
     }
 
     try {
-      const data = await this.requestAll(MEAL_PLANS_DB_ID);
+      const data = await this.requestAll(CONFIG.mealPlansDbId);
       const DAY_MAP = { 
         'Pirmdiena': 'Monday', 'Otrdiena': 'Tuesday', 'Trešdiena': 'Wednesday', 
         'Ceturtdiena': 'Thursday', 'Piektdiena': 'Friday', 'Sestdiena': 'Saturday', 'Svētdiena': 'Sunday',
@@ -113,19 +125,47 @@ const NotionService = {
 
       const parsedData = data.results.map(page => {
         const p = page.properties;
-        const titleProp = Object.values(p).find(prop => prop.type === 'title');
-        const getName = (n) => p[n]?.title?.[0]?.plain_text || p[n]?.rich_text?.[0]?.plain_text || "";
-        const rawDay = p.Day?.select?.name || "Monday";
+        
+        // 1. "Izgludinām" Notion kolonnas: visas kļūst par mazajiem burtiem BEZ atstarpēm
+        const safeProps = {};
+        Object.keys(p).forEach(key => {
+          const safeKey = key.trim().toLowerCase().replace(/\s+/g, '');
+          safeProps[safeKey] = p[key];
+        });
+
+        // 2. Ložu drošs lasītājs parastajiem laukiem
+        const getSafeText = (safeKey) => {
+          const prop = safeProps[safeKey];
+          if (!prop) return null;
+          if (prop.type === 'select' && prop.select) return prop.select.name;
+          if (prop.type === 'status' && prop.status) return prop.status.name;
+          if (prop.type === 'rich_text' && prop.rich_text.length > 0) return prop.rich_text[0].plain_text;
+          if (prop.type === 'title' && prop.title.length > 0) return prop.title[0].plain_text;
+          return null;
+        };
+
+        // 3. Ložu drošs lasītājs Rollup kolonnām
+        const getRollupText = (safeKey) => {
+          const prop = safeProps[safeKey];
+          if (!prop || prop.type !== 'rollup' || !prop.rollup || !prop.rollup.array || prop.rollup.array.length === 0) return "";
+          const val = prop.rollup.array[0];
+          if (val.type === 'rich_text' && val.rich_text && val.rich_text.length > 0) return val.rich_text[0].plain_text;
+          if (val.type === 'title' && val.title && val.title.length > 0) return val.title[0].plain_text;
+          if (val.type === 'select' && val.select) return val.select.name;
+          return "";
+        };
+
+        const rawDay = getSafeText("day") || "Monday";
 
         return {
           id: page.id,
-          isActive: p["Active"]?.checkbox || false,
-          menuName: p["Meal Plan"]?.rich_text?.[0]?.plain_text || "Standard",
+          isActive: safeProps["active"]?.checkbox || false,
+          menuName: getSafeText("menuname") || "Standard",
           day: DAY_MAP[rawDay] || "Monday", 
-          type: p.Type?.select?.name || "Other",
-          name: titleProp?.title?.[0]?.plain_text || "Meal",
-          recipe: getName("Recipe") || "",
-          order: this.getSafeNumber(p["Status"])
+          type: getSafeText("mealtype") || "Other",
+          name: getRollupText("recipename") || getSafeText("name") || "Meal",
+          recipe: getRollupText("recipetext") || "",
+          order: NotionService.getSafeNumber(safeProps["order"])
         };
       });
 
