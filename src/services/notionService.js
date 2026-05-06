@@ -92,7 +92,7 @@ const NotionService = {
           BaseAmount: this.getSafeNumber(p["Amount"]), 
           Unit: p.Unit?.select?.name || null, 
           Department: extractedDept,
-          forMeals: p["Meal Plans"]?.relation?.map(r => r.id) ||[] 
+          forMeals: p["Ingredients Link"]?.relation?.map(r => r.id) || [][] 
         };
       });
       
