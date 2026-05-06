@@ -125,56 +125,26 @@ const NotionService = {
 
       const parsedData = data.results.map(page => {
         const p = page.properties;
-        
-        // 1. "Izgludinām" Notion kolonnas: visas kļūst par mazajiem burtiem BEZ atstarpēm
-        const safeProps = {};
-        Object.keys(p).forEach(key => {
-          const safeKey = key.trim().toLowerCase().replace(/\s+/g, '');
-          safeProps[safeKey] = p[key];
-        });
 
-        // 2. Ložu drošs lasītājs parastajiem laukiem
-        const getSafeText = (safeKey) => {
-          const prop = safeProps[safeKey];
-          if (!prop) return null;
-          if (prop.type === 'select' && prop.select) return prop.select.name;
-          if (prop.type === 'status' && prop.status) return prop.status.name;
-          if (prop.type === 'rich_text' && prop.rich_text.length > 0) return prop.rich_text[0].plain_text;
-          if (prop.type === 'title' && prop.title.length > 0) return prop.title[0].plain_text;
-          return null;
-        };
-
-        // 3. Ložu drošs lasītājs Rollup kolonnām
-        const getRollupText = (safeKey) => {
-          const prop = safeProps[safeKey];
-          if (!prop || prop.type !== 'rollup' || !prop.rollup || !prop.rollup.array || prop.rollup.array.length === 0) return "";
+        // Palīgfunkcija, lai dabūtu tekstu no Rollup laukiem
+        const getRollupText = (prop) => {
+          if (!prop || !prop.rollup || !prop.rollup.array || prop.rollup.array.length === 0) return "";
           const val = prop.rollup.array[0];
           if (val.type === 'rich_text' && val.rich_text && val.rich_text.length > 0) return val.rich_text[0].plain_text;
-          if (val.type === 'title' && val.title && val.title.length > 0) return val.title[0].plain_text;
-          if (val.type === 'select' && val.select) return val.select.name;
+          if (val.title && val.title.length > 0) return val.title[0].plain_text;
           return "";
         };
 
-        const rawDay = getSafeText("day") || "Monday";
-
         return {
           id: page.id,
-          isActive: safeProps["active"]?.checkbox || false,
-          menuName: getSafeText("menuname") || "Standard",
-          day: DAY_MAP[rawDay] || "Monday", 
-          type: getSafeText("mealtype") || "Other",
-          name: getRollupText("recipename") || getSafeText("name") || "Meal",
-          recipe: getRollupText("recipetext") || "",
-          order: NotionService.getSafeNumber(safeProps["order"])
+          isActive: p["Active"]?.checkbox || false,
+          menuName: p["Menu Name"]?.select?.name || "Standard",
+          day: p["Day"]?.select?.name || "Monday",
+          type: p["Meal Type"]?.select?.name || "Other",
+          name: getRollupText(p["Recipe"]) || p["Name"]?.title?.[0]?.plain_text || "Meal",
+          recipe: getRollupText(p["Recipe"]) || "", 
+          order: NotionService.getSafeNumber(p["Order"])
         };
       });
-
-      localStorage.setItem(CACHE_KEY, JSON.stringify(parsedData));
-      localStorage.setItem(CACHE_TIME_KEY, now.toString());
-      return parsedData;
-
-    } catch (e) { throw new Error(`Meal Plan: ${e.message}`); }
-  }
-};
 
 export default NotionService;
